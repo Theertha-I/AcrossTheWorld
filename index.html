@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AcrossTheGlobe – book trips around the world</title>
+
+<style>
+/* variables and basics */
+
+:root {
+color-scheme: dark;
+--ink: #e8f4ff;
+--dim: #8fb0d0;
+--land: #5ee08a;
+--line: rgba(120,190,255,.3);
+box-sizing: border-box;
+padding-top: env(safe-area-inset-top,0px);
+padding-bottom: env(safe-area-inset-bottom,0px);
+}
+
+html {
+scroll-padding-top: env(safe-area-inset-top,0px);
+}
+
+* {
+box-sizing: inherit;
+}
+
+body {
+margin: 0;
+min-height: 100vh;
+color: var(--ink);
+font-family: system-ui,sans-serif;
+background: linear-gradient(180deg,var(--sky1,#0e2a55),var(--sky2,#050d1f)) fixed;
+}
+
+header {
+padding: 22px 5vw 0;
+text-align: center;
+}
+
+h1 {
+margin: 0;
+font-family: "Fraunces",Georgia,serif;
+font-size: clamp(1.7rem,4vw,2.6rem);
+}
+
+header p {
+margin: 4px 0 0;
+color: var(--dim);
+}
+
+/* page layout and globe */
+
+.wrap {
+position: relative;
+display: grid;
+grid-template-columns: minmax(210px,1fr) minmax(0,1.5fr) minmax(210px,1fr);
+grid-template-rows: 1fr 1fr;
+gap: 16px;
+padding: 12px 4vw 36px;
+max-width: 1500px;
+margin: 0 auto;
+}
+
+#stage {
+z-index: 2;
+grid-column: 2;
+grid-row: 1/span 2;
+position: relative;
+width: 100%;
+max-width: 680px;
+aspect-ratio: 1;
+margin: 0 auto;
+cursor: grab;
+touch-action: none;
+user-select: none;
+}
+
+#stage:active {
+cursor: grabbing;
+}
+
+#stage::before {
+content: "";
+position: absolute;
+inset: 8%;
+border-radius: 50%;
+background: radial-gradient(circle,rgba(58,167,255,.28),rgba(58,167,255,0) 70%);
+filter: blur(10px);
+}
+
+canvas {
+position: absolute;
+inset: 0;
+width: 100%;
+height: 100%;
+}
+
+/* info cards */
+
+.card {
+position: relative;
+z-index: 1;
+transform: translate(var(--dx,0px),var(--dy,0px)) scale(.4);
+opacity: 0;
+pointer-events: none;
+transition: transform .6s cubic-bezier(.2,.85,.25,1),opacity .35s;
+background: rgba(8,26,58,.72);
+border: 1px solid var(--line);
+border-radius: 18px 6px 18px 6px;
+padding: 16px;
+backdrop-filter: blur(6px);
+min-height: 190px;
+display: flex;
+flex-direction: column;
+gap: 6px;
+overflow: hidden;
+}
+
+.card h3 {
+margin: 0;
+font-family: "Fraunces",Georgia,serif;
+font-size: 1.05rem;
+color: var(--land);
+}
+
+.card p, .card li {
+margin: 0;
+line-height: 1.5;
+font-size: .95rem;
+}
+
+.card ul {
+margin: 0;
+padding-left: 1.1em;
+}
+
+.big {
+font-family: "Fraunces",Georgia,serif;
+font-size: 1.5rem;
+line-height: 1.2;
+}
+
+.dim {
+color: var(--dim);
+}
+
+.wrap.open .card {
+transform: none;
+opacity: 1;
+pointer-events: auto;
+}
+
+#c1 {
+grid-column: 1;
+grid-row: 1;
+align-self: start;
+padding: 0;
+}
+
+#c2 {
+grid-column: 3;
+grid-row: 1;
+align-self: start;
+}
+
+#c3 {
+grid-column: 1;
+grid-row: 2;
+align-self: end;
+}
+
+#c4 {
+grid-column: 3;
+grid-row: 2;
+align-self: end;
+}
+
+#pic {
+flex: 1;
+min-height: 190px;
+display: grid;
+place-items: center;
+font-size: 76px;
+background-size: cover;
+background-position: center;
+position: relative;
+transition: background .3s;
+}
+
+#pic div {
+position: absolute;
+left: 14px;
+bottom: 10px;
+font-family: "Fraunces",Georgia,serif;
+font-size: 1.5rem;
+text-shadow: 0 2px 8px #000a;
+line-height: 1.1;
+}
+
+#pic small {
+display: block;
+font-family: system-ui,sans-serif;
+font-size: .85rem;
+font-weight: 400;
+}
+
+[hidden] {
+display: none!important;
+}
+
+html {
+scroll-behavior: smooth;
+}
+
+/* navigation and buttons */
+
+.nav {
+position: sticky;
+top: env(safe-area-inset-top,0px);
+z-index: 30;
+display: flex;
+align-items: center;
+gap: 18px;
+padding: 12px 4vw;
+background: rgba(5,13,31,.88);
+backdrop-filter: blur(8px);
+border-bottom: 1px solid var(--line);
+}
+
+.logo {
+font-family: "Fraunces",Georgia,serif;
+font-size: 1.3rem;
+color: var(--ink);
+text-decoration: none;
+font-weight: 600;
+}
+
+.links {
+display: flex;
+gap: 16px;
+flex: 1;
+}
+
+.links a {
+color: var(--dim);
+text-decoration: none;
+}
+
+.links a:hover {
+color: #fff;
+}
+
+button {
+font: inherit;
+}
+
+.cta {
+background: linear-gradient(135deg,#3aa7ff,#5ee0c8);
+color: #04142a;
+border: 0;
+border-radius: 999px;
+padding: 10px 22px;
+font-weight: 700;
+cursor: pointer;
+}
+
+.cta.sm {
+padding: 7px 14px;
+font-size: .9rem;
+}
+
+.ghost, .tabs button {
+background: none;
+border: 1px solid var(--line);
+color: var(--ink);
+border-radius: 999px;
+padding: 7px 14px;
+cursor: pointer;
+font-size: .9rem;
+}
+
+.tabs button.on {
+background: rgba(58,167,255,.28);
+border-color: #3aa7ff;
+}
+
+#guest, #member {
+display: flex;
+gap: 8px;
+align-items: center;
+}
+
+.search {
+position: relative;
+max-width: 520px;
+margin: 14px auto 0;
+}
+
+.search input {
+width: 100%;
+padding: 14px 20px;
+border-radius: 999px;
+border: 1px solid var(--line);
+background: rgba(8,26,58,.85);
+color: var(--ink);
+font: inherit;
+font-size: 1rem;
+}
+
+#sg {
+position: absolute;
+left: 0;
+right: 0;
+top: calc(100% + 6px);
+z-index: 25;
+background: #0a1d40;
+border: 1px solid var(--line);
+border-radius: 14px;
+overflow: hidden;
+text-align: left;
+}
+
+#sg button {
+display: block;
+width: 100%;
+text-align: left;
+background: none;
+border: 0;
+color: var(--ink);
+padding: 10px 18px;
+cursor: pointer;
+}
+
+#sg button:hover {
+background: rgba(58,167,255,.22);
+}
+
+#selbar {
+display: flex;
+gap: 14px;
+justify-content: center;
+align-items: center;
+margin-top: 14px;
+flex-wrap: wrap;
+font-size: 1.1rem;
+}
+
+/* booking and packages */
+
+.sec {
+max-width: 1100px;
+margin: 0 auto;
+padding: 40px 4vw;
+}
+
+.sec h2, #bookbox h3 {
+font-family: "Fraunces",Georgia,serif;
+margin: 0 0 14px;
+font-size: 1.7rem;
+}
+
+#bookbox h3 span {
+color: var(--land);
+}
+
+.tabs {
+display: flex;
+gap: 8px;
+flex-wrap: wrap;
+margin-bottom: 14px;
+}
+
+.form {
+display: grid;
+grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+gap: 10px;
+align-items: end;
+margin-bottom: 16px;
+}
+
+.form label, #mform label {
+display: grid;
+gap: 4px;
+color: var(--dim);
+font-size: .85rem;
+}
+
+.form input, #mform input {
+padding: 10px 12px;
+border-radius: 10px;
+border: 1px solid var(--line);
+background: rgba(8,26,58,.85);
+color: var(--ink);
+font: inherit;
+}
+
+.opt {
+display: flex;
+align-items: center;
+gap: 14px;
+justify-content: space-between;
+flex-wrap: wrap;
+padding: 14px 16px;
+border: 1px solid var(--line);
+border-radius: 14px;
+background: rgba(8,26,58,.6);
+margin-bottom: 10px;
+}
+
+.pr {
+display: flex;
+align-items: baseline;
+gap: 8px;
+flex-wrap: wrap;
+}
+
+.pr b {
+font-size: 1.3rem;
+color: #7dffb8;
+}
+
+.was {
+text-decoration: line-through;
+color: var(--dim);
+}
+
+.pr em {
+font-style: normal;
+background: #ffe27a;
+color: #3a2a00;
+border-radius: 6px;
+padding: 2px 7px;
+font-size: .78rem;
+font-weight: 700;
+}
+
+.small {
+font-size: .85rem;
+}
+
+.grid {
+display: grid;
+grid-template-columns: repeat(auto-fit,minmax(260px,1fr));
+gap: 16px;
+}
+
+.pkg {
+border: 1px solid var(--line);
+border-radius: 16px;
+overflow: hidden;
+background: rgba(8,26,58,.6);
+}
+
+.pimg {
+height: 150px;
+display: grid;
+place-items: center;
+font-size: 54px;
+background-size: cover;
+background-position: center;
+}
+
+.opt em.best {
+background: #7dffb8;
+color: #04301a;
+font-style: normal;
+border-radius: 6px;
+padding: 2px 8px;
+font-size: .78rem;
+font-weight: 700;
+}
+
+.pb {
+padding: 14px;
+display: grid;
+gap: 8px;
+}
+
+.pb h4 {
+margin: 0;
+font-size: 1.1rem;
+}
+
+/* login pop-up and messages */
+
+#modal {
+position: fixed;
+inset: 0;
+z-index: 50;
+background: rgba(0,0,0,.6);
+display: grid;
+place-items: center;
+}
+
+#mform {
+background: #0a1d40;
+border: 1px solid var(--line);
+border-radius: 18px;
+padding: 22px;
+width: min(380px,92vw);
+display: grid;
+gap: 12px;
+position: relative;
+}
+
+.x {
+position: absolute;
+right: 12px;
+top: 8px;
+background: none;
+border: 0;
+color: var(--dim);
+font-size: 1.6rem;
+cursor: pointer;
+}
+
+#toast {
+position: fixed;
+left: 50%;
+bottom: 24px;
+transform: translate(-50%,90px);
+background: #0a1d40;
+border: 1px solid #5ee0c8;
+border-radius: 12px;
+padding: 12px 18px;
+z-index: 60;
+transition: transform .3s;
+}
+
+#toast.show {
+transform: translate(-50%,0);
+}
+
+footer {
+text-align: center;
+color: var(--dim);
+padding: 30px 4vw;
+font-size: .85rem;
+}
+
+/* small screens */
+
+@media (max-width: 700px) {
+
+.links {
+display: none;
+}
+
+.nav {
+justify-content: space-between;
+}
+
+}
+
+@media (max-width: 860px) {
+
+.wrap {
+grid-template-columns: 1fr 1fr;
+grid-template-rows: auto;
+}
+
+#stage {
+grid-column: 1/span 2;
+grid-row: 1;
+}
+
+#c1 {
+grid-column: 1;
+grid-row: 2;
+}
+
+#c2 {
+grid-column: 2;
+grid-row: 2;
+}
+
+#c3 {
+grid-column: 1;
+grid-row: 3;
+}
+
+#c4 {
+grid-column: 2;
+grid-row: 3;
+}
+
+}
+
+</style>
+</head>
+
+
+
+<body>
+
+<nav class="nav">
+<a class="logo" href="#top">🌍 AcrossTheGlobe</a>
+<div class="links">
+<a href="#top">Explore</a>
+<a href="#book">Book</a>
+<a href="#packages">Packages</a>
+</div>
+<div id="guest">
+<button class="ghost" id="login">Log in</button>
+<button class="cta sm" id="signup">Sign up</button>
+</div>
+<div id="member" hidden>
+<span id="uname"></span>
+<button class="ghost" id="logout">Log out</button>
+</div>
+</nav>
+
+<header id="top">
+<h1>Where to next?</h1>
+<p>Across The Globe In Just A Few Clicks</p>
+<div id="clock" class="dim small"></div>
+<div class="search">
+<input id="q" placeholder="Search a country or place…" autocomplete="off">
+<div id="sg" hidden></div>
+</div>
+<div id="selbar" hidden>
+<span id="seltxt"></span>
+<button class="cta" id="travel">Travel →</button>
+</div>
+</header>
+
+<main class="wrap" id="wrap">
+<section class="card" id="c1">
+<div id="pic"><span>🌍</span><div>Pick a city<small>Any word on the globe</small></div></div>
+</section>
+<section class="card" id="c2">
+<h3>About</h3>
+<p class="dim">A short description of the city appears here.</p>
+</section>
+<section class="card" id="c3">
+<h3>When to go</h3>
+<p class="dim">Best months and how long to stay.</p>
+</section>
+<section class="card" id="c4">
+<h3>Don’t miss</h3>
+<p class="dim">Top things to see and what to eat.</p>
+</section>
+<div id="stage" aria-label="Globe made of city names">
+<canvas id="cv"></canvas>
+</div>
+</main>
+
+<section id="book" class="sec">
+<div id="bookbox"></div>
+</section>
+
+<section id="packages" class="sec">
+<h2 id="pktitle">Tour packages</h2>
+<div id="pk" class="grid"></div>
+</section>
+
+<footer>* Theertha Iyyakandy | Hibah Shaikh | Yash Singh *</footer>
+
+<div id="modal" hidden>
+<form id="mform">
+<button type="button" class="x" id="mx">×</button>
+<div class="tabs">
+<button type="button" id="mt1" class="on">Log in</button>
+<button type="button" id="mt2">Sign up</button>
+</div>
+<p id="mmsg" class="dim small"></p>
+<label id="nameF" hidden>Name<input id="nm"></label>
+<label>Email<input id="em" type="email" required></label>
+<label>Password<input id="pw" type="password" required minlength="6"></label>
+<button class="cta" id="msub">Log in</button>
+<p class="dim small">Note : No data is actually stored.</p>
+</form>
+</div>
+
+<div id="toast"></div>
+
+<script>
+
+const $ = id => document.getElementById(id);
+
+//   city data  
+const cityData = `Paris, France | Apr–Jun, Sep–Oct | Seine evening cruise | Eiffel Tower, Louvre, Montmartre | Croissants & duck confit | Haussmann romance
+Rome, Italy | Apr–May, Sep–Oct | Walking the ancient ruins | Colosseum, Pantheon, Trevi Fountain | Carbonara | Ancient meets baroque
+Florence, Italy | Apr–Jun, Sep–Oct | Renaissance art tour | Uffizi, Duomo, Ponte Vecchio | Bistecca alla fiorentina | Terracotta Renaissance
+Venice, Italy | Apr–May, Sep–Oct | Getting lost in canals | St Mark's Square, Rialto Bridge, Burano | Cicchetti | Floating faded grandeur
+Milan, Italy | Apr–Jun, Sep | Fashion shopping & aperitivo | Duomo, Galleria Vittorio Emanuele II, Navigli | Risotto alla milanese | Sleek and fashion-forward
+Naples, Italy | Apr–Jun, Sep–Oct | Day trip to Pompeii | Spaccanapoli, Pompeii, Castel dell'Ovo | Neapolitan pizza | Gritty, loud, soulful
+Bologna, Italy | Apr–Jun, Sep–Oct | Food tour | Two Towers, Piazza Maggiore, San Luca Portico | Tagliatelle al ragù | Red-brick porticoes
+Palermo, Italy | Apr–Jun, Sep–Oct | Street food crawl | Palermo Cathedral, Quattro Canti, Ballarò Market | Arancine | Faded Norman-baroque
+Barcelona, Spain | May–Jun, Sep | Gaudí architecture trail | Sagrada Família, Park Güell, Gothic Quarter | Tapas & paella | Colourful modernisme by the sea
+Madrid, Spain | Mar–May, Sep–Nov | Museum hopping & tapas crawl | Prado, Retiro Park, Plaza Mayor | Cocido madrileño, churros | Grand boulevards, late nights
+Seville, Spain | Mar–May, Oct–Nov | Flamenco show | Alcázar, Plaza de España, Cathedral | Jamón & tapas | Orange trees and Moorish courtyards
+Granada, Spain | Apr–May, Sep–Oct | Alhambra at sunset | Alhambra, Albaicín, Sacromonte | Free tapas | Moorish hilltop
+San Sebastián, Spain | Jun–Sep | Pintxos bar crawl | La Concha Beach, Monte Igueldo, Parte Vieja | Pintxos | Elegant seaside gastronomy
+Valencia, Spain | Mar–May, Oct | Beach plus futuristic architecture | City of Arts and Sciences, Mercado Central, Turia Gardens | Paella valenciana | Sunny and futuristic
+Lisbon, Portugal | Mar–Jun, Sep–Oct | Tram 28 ride | Belém Tower, Alfama, LX Factory | Pastel de nata | Pastel tiles on steep hills
+Porto, Portugal | Apr–Jun, Sep–Oct | Port wine tasting | Ribeira, Livraria Lello, Dom Luís I Bridge | Francesinha | Azulejo-clad riverside
+Amsterdam, Netherlands | Apr–May, Sep | Canal cycling | Rijksmuseum, Anne Frank House, Jordaan | Stroopwafel & herring | Gabled canal houses
+Bruges, Belgium | Apr–Jun, Sep | Canal boat ride | Markt, Belfry, Minnewater | Belgian waffles & frites | Medieval fairytale
+Brussels, Belgium | Apr–Sep | Beer tasting | Grand Place, Atomium, Mont des Arts | Moules-frites | Art nouveau and quirky
+Berlin, Germany | May–Sep | Street art and club hopping | Brandenburg Gate, East Side Gallery, Museum Island | Currywurst & döner | Edgy and creative
+Munich, Germany | Jun–Sep, Oktoberfest | Beer hall visit | Marienplatz, Nymphenburg Palace, English Garden | Weisswurst & pretzels | Bavarian
+Hamburg, Germany | Jun–Sep | Harbour cruise | Elbphilharmonie, Speicherstadt, Reeperbahn | Fischbrötchen | Maritime brick warehouses
+Vienna, Austria | Apr–Jun, Dec | Classical concert | Schönbrunn, St Stephen's Cathedral, Belvedere | Wiener schnitzel & Sachertorte | Imperial coffeehouse elegance
+Salzburg, Austria | Jun–Sep, Dec | Mozart and Sound of Music tour | Hohensalzburg Fortress, Mirabell Gardens, Getreidegasse | Salzburger Nockerl | Alpine baroque
+Prague, Czechia | Apr–Jun, Sep–Oct | Old Town walk at dawn | Charles Bridge, Prague Castle, Old Town Square | Svíčková & Czech beer | Gothic spires
+Budapest, Hungary | Apr–Jun, Sep | Thermal bath soak | Parliament, Fisherman's Bastion, Széchenyi Baths | Goulash & lángos | Grand Danube capital
+Krakow, Poland | May–Sep | Wawel and Kazimierz walk | Wawel Castle, Main Market Square, Kazimierz | Pierogi | Medieval and bohemian
+Gdańsk, Poland | Jun–Aug | Waterfront and amber shopping | Long Market, Mariacka Street, St Mary's Church | Pierogi & fresh fish | Colourful Hanseatic
+Copenhagen, Denmark | May–Aug | Cycling | Nyhavn, Tivoli Gardens, Christiansborg | Smørrebrød | Hygge and design
+Stockholm, Sweden | May–Aug | Archipelago boat trip | Gamla Stan, Vasa Museum, Djurgården | Meatballs & fika | Island-spread elegance
+Oslo, Norway | Jun–Aug | Fjord cruise | Viking Ship Museum, Opera House, Vigeland Park | Salmon & brunost | Minimalist Nordic
+Bergen, Norway | May–Sep | Fjord excursion | Bryggen, Mount Fløyen, Fish Market | Seafood & fish soup | Wooden wharf houses
+Helsinki, Finland | Jun–Aug | Sauna and sea swim | Suomenlinna, Helsinki Cathedral, Temppeliaukio Church | Karelian pies & salmon soup | Neoclassical meets design
+Reykjavik, Iceland | Jun–Aug, Sep–Mar | Northern lights / Golden Circle | Hallgrímskirkja, Harpa, Blue Lagoon | Lamb soup & Icelandic hot dog | Colourful rooftops at the edge of the world
+Tallinn, Estonia | May–Sep | Medieval Old Town walk | Toompea Hill, Town Hall Square, Kadriorg Park | Black bread & elk soup | Medieval meets digital
+Riga, Latvia | May–Sep | Art nouveau walk | Old Town, Alberta iela, Central Market | Grey peas with bacon | Art nouveau grandeur
+Vilnius, Lithuania | May–Sep | Old Town wandering | Gediminas Tower, Užupis, Vilnius Cathedral | Cepelinai | Baroque and bohemian
+Edinburgh, UK | May–Sep | Hike Arthur's Seat | Edinburgh Castle, Royal Mile, Arthur's Seat | Haggis, neeps & tatties | Gothic and moody
+London, UK | May–Sep | Free museum hopping | British Museum, Tower of London, Borough Market | Fish & chips, Sunday roast | Layered and cosmopolitan
+Dublin, Ireland | May–Sep | Live music pub night | Guinness Storehouse, Trinity College, Temple Bar | Irish stew | Georgian and lively
+Bath, UK | Apr–Sep | Roman Baths and spa | Roman Baths, Royal Crescent, Pulteney Bridge | Sally Lunn bun | Honey-stone Georgian
+Athens, Greece | Apr–Jun, Sep–Oct | Acropolis at sunrise | Acropolis, Plaka, Monastiraki | Souvlaki & moussaka | Ancient ruins and street art
+Thessaloniki, Greece | Apr–Jun, Sep–Oct | Waterfront food tour | White Tower, Rotunda, Ladadika | Bougatsa | Byzantine waterfront
+Dubrovnik, Croatia | May–Jun, Sep | City wall walk | City Walls, Stradun, Lokrum Island | Black risotto | Walled Adriatic gem
+Split, Croatia | May–Sep | Island hopping | Diocletian's Palace, Riva Promenade, Marjan Hill | Peka | Roman palace living city
+Ljubljana, Slovenia | May–Sep | Riverside café hopping | Dragon Bridge, Ljubljana Castle, Tivoli Park | Kranjska klobasa | Green and storybook
+Kotor, Montenegro | May–Sep | Fortress climb | Old Town, San Giovanni Fortress, Bay of Kotor | Fresh seafood | Medieval town on a fjord-like bay
+Sarajevo, Bosnia & Herzegovina | Apr–Jun, Sep | Old Bazaar stroll | Baščaršija, Latin Bridge, Tunnel of Hope | Ćevapi & burek | East meets West
+Mostar, Bosnia & Herzegovina | May–Sep | Bridge-jump watching & Kravica day trip | Stari Most, Koski Mehmed Pasha Mosque, Kravica Falls | Bosnian coffee & baklava | Ottoman stone charm
+Belgrade, Serbia | May–Sep | River barge nightlife | Kalemegdan, Skadarlija, Temple of Saint Sava | Ćevapi & kajmak | Gritty, vibrant, unpolished
+Brașov, Romania | Jun–Sep | Castle day trip | Black Church, Mount Tâmpa, Bran Castle | Sarmale & mămăligă | Saxon Transylvanian
+Plovdiv, Bulgaria | May–Sep | Old Town and Kapana wander | Roman Theatre, Kapana District, Old Town | Banitsa | Bohemian Roman layers
+Nice, France | May–Jun, Sep | Promenade stroll & Riviera beaches | Promenade des Anglais, Old Town, Castle Hill | Socca & salade niçoise | Pastel Riviera
+Lyon, France | Apr–Jun, Sep | Bouchon dining | Vieux Lyon, Fourvière Basilica, Les Halles Paul Bocuse | Quenelles | Gastronomic and Renaissance
+Strasbourg, France | Apr–Jun, Dec | Christmas markets | Cathedral, Petite France, European Parliament | Tarte flambée | Half-timbered Franco-German
+Bordeaux, France | May–Jun, Sep–Oct | Wine tasting | Place de la Bourse, La Cité du Vin, Saint-Émilion | Canelé | Honey-stone elegance
+Zurich, Switzerland | Jun–Sep | Lake swimming | Old Town, Lake Zurich, Uetliberg | Fondue & Zürcher Geschnetzeltes | Tidy and lakeside
+Lucerne, Switzerland | May–Sep | Mount Pilatus excursion | Chapel Bridge, Lion Monument, Mount Pilatus | Älplermagronen | Alpine lakeside postcard
+Valletta, Malta | Apr–Jun, Sep–Oct | Harbour walk | Upper Barrakka Gardens, St John's Co-Cathedral, Three Cities | Pastizzi | Honey-limestone fortress
+Tbilisi, Georgia | May–Jun, Sep–Oct | Sulfur baths and wine tasting | Narikala Fortress, Old Town, Abanotubani | Khachapuri & khinkali | Crumbling carved balconies
+Yerevan, Armenia | May–Jun, Sep | Brandy tasting | Cascade Complex, Republic Square, Garni Temple | Khorovats | Pink-stone Soviet charm
+Baku, Azerbaijan | Apr–Jun, Sep–Oct | Old City walk | Icheri Sheher, Flame Towers, Heydar Aliyev Center | Plov | Futuristic meets medieval
+Tokyo, Japan | Mar–May, Oct–Nov | Izakaya and neighbourhood hopping | Senso-ji, Shibuya Crossing, Meiji Shrine | Sushi & ramen | Neon future meets tradition
+Kyoto, Japan | Mar–Apr, Nov | Temple and geisha-district walks | Fushimi Inari, Kinkaku-ji, Arashiyama Bamboo Grove | Kaiseki | Timeless wooden Japan
+Osaka, Japan | Mar–May, Oct–Nov | Street food crawl | Dotonbori, Osaka Castle, Shinsekai | Takoyaki & okonomiyaki | Loud, neon, and fun
+Hiroshima, Japan | Mar–May, Oct–Nov | Peace Park and Miyajima trip | Peace Memorial Park, Itsukushima Shrine, Hiroshima Castle | Okonomiyaki | Resilient and reflective
+Sapporo, Japan | Feb (snow), Jun–Aug | Snow festival or beer tasting | Odori Park, Sapporo Beer Museum, Mount Moiwa | Miso ramen & Genghis Khan lamb | Snowy northern calm
+Kanazawa, Japan | Mar–May, Oct–Nov | Samurai and geisha district stroll | Kenroku-en, Higashi Chaya District, Kanazawa Castle | Fresh seafood | Preserved Edo-era refinement
+Seoul, South Korea | Apr–Jun, Sep–Oct | Palace and K-culture exploring | Gyeongbokgung, Bukchon Hanok Village, Myeongdong | Korean BBQ & tteokbokki | Ultra-modern with royal heritage
+Busan, South Korea | May–Jun, Sep–Oct | Beach and seafood market | Gamcheon Culture Village, Haeundae Beach, Jagalchi Market | Dwaeji gukbap & fresh sashimi | Colourful hillside coastal
+Beijing, China | Apr–May, Sep–Oct | Great Wall hike | Forbidden City, Great Wall (Mutianyu), Temple of Heaven | Peking duck | Imperial grandeur
+Shanghai, China | Mar–May, Oct–Nov | Bund night walk | The Bund, Yu Garden, French Concession | Xiaolongbao | Art deco meets futuristic skyline
+Hong Kong | Oct–Dec | Victoria Peak and Star Ferry | Victoria Peak, Tian Tan Buddha, Temple Street Night Market | Dim sum & egg tarts | Vertical neon density
+Chengdu, China | Mar–Jun, Sep–Nov | Giant panda visit | Panda Base, Jinli Street, Leshan Giant Buddha | Hot pot & mapo tofu | Laid-back teahouse spice
+Xi'an, China | Apr–May, Sep–Oct | Cycle the city walls | Terracotta Army, City Wall, Muslim Quarter | Biangbiang noodles & roujiamo | Ancient Silk Road capital
+Guilin, China | Apr–May, Sep–Oct | Li River cruise | Li River, Elephant Trunk Hill, Longji Rice Terraces | Guilin rice noodles | Misty karst landscape
+Taipei, Taiwan | Oct–Dec, Mar–Apr | Night market crawl | Taipei 101, Shilin Night Market, Jiufen | Beef noodle soup & bubble tea | Friendly, neon, food-obsessed
+Bangkok, Thailand | Nov–Feb | Temple and river-boat tour | Grand Palace, Wat Arun, Chatuchak Market | Pad thai & mango sticky rice | Chaotic, golden, electric
+Chiang Mai, Thailand | Nov–Feb | Ethical elephant sanctuary visit | Doi Suthep, Old City temples, Sunday Walking Street | Khao soi | Relaxed temple-filled northern
+Luang Prabang, Laos | Nov–Mar | Dawn alms-giving observation | Kuang Si Falls, Mount Phousi, Royal Palace Museum | Laap & sticky rice | Sleepy French-colonial temple town
+Hanoi, Vietnam | Oct–Dec, Mar–Apr | Old Quarter street food | Hoan Kiem Lake, Temple of Literature, Old Quarter | Phở & bún chả | Frenetic colonial charm
+Ho Chi Minh City, Vietnam | Dec–Apr | Scooter food tour | War Remnants Museum, Ben Thanh Market, Notre-Dame Cathedral | Bánh mì | Buzzing French-colonial metropolis
+Hoi An, Vietnam | Feb–May | Lantern-lit evenings & tailor-made clothes | Ancient Town, Japanese Covered Bridge, An Bang Beach | Cao lầu | Yellow-walled lantern town
+Siem Reap, Cambodia | Nov–Mar | Sunrise at Angkor Wat | Angkor Wat, Bayon, Ta Prohm | Fish amok | Jungle-draped temple ruins
+Phnom Penh, Cambodia | Nov–Feb | Riverside and history tour | Royal Palace, Silver Pagoda, Central Market | Num banh chok | Colonial and resilient
+Singapore | Feb–Apr | Hawker centre feasting | Gardens by the Bay, Marina Bay Sands, Chinatown | Chilli crab & Hainanese chicken rice | Clean, green, futuristic
+Kuala Lumpur, Malaysia | May–Jul, Dec–Feb | Street food and skyline views | Petronas Towers, Batu Caves, Jalan Alor | Nasi lemak | Skyscrapers meet street stalls
+George Town, Malaysia | Dec–Feb | Street art and hawker food walk | Armenian Street, Khoo Kongsi, Penang Hill | Char kuey teow & assam laksa | Heritage shophouses and murals
+Ubud, Indonesia | Apr–Oct | Rice terrace walk and yoga | Tegallalang Rice Terraces, Sacred Monkey Forest, Tirta Empul | Babi guling | Lush spiritual jungle
+Yogyakarta, Indonesia | May–Sep | Sunrise at Borobudur | Borobudur, Prambanan, Kraton Palace | Gudeg | Javanese cultural heart
+Manila, Philippines | Dec–Apr | Intramuros walk | Intramuros, Fort Santiago, Rizal Park | Adobo & halo-halo | Spanish-era stone meets chaos
+El Nido, Philippines | Nov–May | Island-hopping lagoon tour | Big Lagoon, Secret Lagoon, Nacpan Beach | Fresh grilled seafood | Limestone cliffs and turquoise water
+Kathmandu, Nepal | Oct–Nov, Mar–Apr | Temple tour and trek prep | Boudhanath Stupa, Swayambhunath, Durbar Square | Momo & dal bhat | Chaotic, spiritual, Himalayan
+Pokhara, Nepal | Oct–Nov, Mar–Apr | Paragliding over the lake | Phewa Lake, World Peace Pagoda, Sarangkot | Newari thali | Lakeside Himalayan calm
+Colombo, Sri Lanka | Dec–Mar | Colonial and street-food walk | Galle Face Green, Gangaramaya Temple, Pettah Market | Kottu roti | Colonial-meets-coastal buzz
+Kandy, Sri Lanka | Jan–Apr | Temple of the Tooth ceremony | Temple of the Sacred Tooth, Royal Botanic Gardens, Kandy Lake | Rice and curry | Hill-country sacred town
+Galle, Sri Lanka | Dec–Apr | Fort walls sunset walk | Galle Fort, Lighthouse, Unawatuna Beach | Seafood curry & hoppers | Dutch fort by the ocean
+Delhi, India | Oct–Mar | Old Delhi food walk | Red Fort, Humayun's Tomb, Chandni Chowk | Butter chicken & chaat | Mughal grandeur and chaos
+Agra, India | Oct–Mar | Taj Mahal at sunrise | Taj Mahal, Agra Fort, Mehtab Bagh | Petha & Mughlai cuisine | Marble Mughal romance
+Jaipur, India | Oct–Mar | Fort and palace touring | Amber Fort, City Palace, Hawa Mahal | Dal baati churma | Pink-hued royal Rajasthan
+Udaipur, India | Oct–Mar | Lake Pichola sunset boat ride | City Palace, Lake Pichola, Jag Mandir | Laal maas | Romantic lakeside palaces
+Jodhpur, India | Oct–Mar | Mehrangarh Fort and zipline | Mehrangarh Fort, Clock Tower Market, Jaswant Thada | Mirchi bada | Blue-washed old town
+Varanasi, India | Oct–Mar | Dawn Ganges boat ride | Dashashwamedh Ghat, Kashi Vishwanath Temple, Sarnath | Kachori sabzi & lassi | Intense, ancient, spiritual
+Mumbai, India | Nov–Feb | Marine Drive and street food | Gateway of India, Marine Drive, Elephanta Caves | Vada pav & pav bhaji | Colonial and Bollywood hustle
+Panaji (Goa), India | Nov–Feb | Beach hopping and Latin Quarter walk | Fontainhas, Basilica of Bom Jesus, Baga Beach | Goan fish curry | Portuguese pastel meets beach
+Kochi, India | Nov–Feb | Backwater and Kathakali experience | Chinese Fishing Nets, Fort Kochi, Mattancherry Palace | Appam & Kerala fish curry | Spice-trade heritage
+Rishikesh, India | Sep–Nov, Feb–Apr | Yoga and river rafting | Laxman Jhula, Triveni Ghat Aarti, Beatles Ashram | Satvik thali | Spiritual riverside
+Leh, India | Jun–Sep | Altitude acclimatisation & monastery tours | Shanti Stupa, Thiksey Monastery, Pangong Lake | Thukpa & momos | High-altitude Buddhist desert
+Amritsar, India | Oct–Mar | Golden Temple langar | Golden Temple, Jallianwala Bagh, Wagah Border | Amritsari kulcha | Golden, devotional, hearty
+Thimphu, Bhutan | Mar–May, Sep–Nov | Dzong and monastery visits | Tashichho Dzong, Buddha Dordenma, Memorial Chorten | Ema datshi | Serene Himalayan kingdom
+Samarkand, Uzbekistan | Apr–May, Sep–Oct | Silk Road madrasa tour | Registan, Gur-e-Amir, Shah-i-Zinda | Plov | Turquoise-tiled Silk Road
+Bukhara, Uzbekistan | Apr–May, Sep–Oct | Old city bazaar wander | Ark Fortress, Kalyan Minaret, Lyabi-Hauz | Plov & samsa | Living Silk Road museum
+Almaty, Kazakhstan | May–Sep | Mountain day trips | Medeu, Shymbulak, Panfilov Park | Beshbarmak | Soviet city beneath snowy peaks
+Ulaanbaatar, Mongolia | Jun–Aug | Ger camp and steppe trip | Gandan Monastery, Sükhbaatar Square, Terelj National Park | Buuz & khorkhog | Nomad culture meets Soviet grid
+Macau, China | Oct–Dec | Heritage walk and casino-hotel views | Ruins of St Paul's, Senado Square, Venetian | Portuguese egg tart | Portuguese-Chinese fusion
+Malé, Maldives | Nov–Apr | Resort island stay and snorkelling | Hulhumalé Beach, Grand Friday Mosque, Fish Market | Garudhiya & mas huni | Turquoise island paradise
+Nagasaki, Japan | Mar–May, Oct–Nov | Peace memorial and night-view cable car | Peace Park, Glover Garden, Mount Inasa | Champon & castella | Hilly, multicultural port
+Istanbul, Türkiye | Apr–May, Sep–Nov | Bosphorus cruise | Hagia Sophia, Blue Mosque, Grand Bazaar | Kebabs, baklava & simit | Two continents, domes and minarets
+Göreme, Türkiye | Apr–Jun, Sep–Oct | Hot-air balloon at sunrise | Göreme Open-Air Museum, Uçhisar Castle, Love Valley | Testi kebab | Fairy-chimney landscape
+Dubai, UAE | Nov–Mar | Desert safari | Burj Khalifa, Dubai Mall, Old Dubai Souks | Shawarma & Emirati machboos | Hyper-modern desert luxury
+Abu Dhabi, UAE | Nov–Mar | Mosque and Louvre visit | Sheikh Zayed Grand Mosque, Louvre Abu Dhabi, Qasr Al Watan | Machboos | Polished marble and mirage
+Muscat, Oman | Oct–Mar | Wadi and coastal exploration | Sultan Qaboos Grand Mosque, Mutrah Souq, Wadi Shab | Shuwa | Whitewashed and welcoming
+Doha, Qatar | Nov–Mar | Souq and museum stroll | Museum of Islamic Art, Souq Waqif, The Pearl | Machboos & karak chai | Futuristic Gulf meets heritage souq
+Amman, Jordan | Mar–May, Sep–Nov | Roman ruins and Dead Sea day trip | Citadel, Roman Theatre, Rainbow Street | Mansaf & hummus | Hillside limestone sprawl
+Wadi Musa (Petra), Jordan | Mar–May, Sep–Nov | Petra and Wadi Rum trek | Petra Treasury, Monastery, Little Petra | Zarb Bedouin barbecue | Rose-red rock city
+Jerusalem, Israel/Palestine | Mar–May, Sep–Nov | Old City walk | Western Wall, Church of the Holy Sepulchre, Dome of the Rock | Falafel & hummus | Sacred layered stone
+Tel Aviv, Israel | Apr–Jun, Sep–Nov | Beach and Carmel Market | Jaffa Old City, Bauhaus White City, Carmel Market | Shakshuka & sabich | Bauhaus beach city
+Beirut, Lebanon | Apr–Jun, Sep–Nov | Corniche walk & food crawl | Corniche, Sursock Museum, Gemmayzeh | Mezze & manousheh | Resilient, artsy, cosmopolitan
+Isfahan, Iran | Apr–May, Sep–Oct | Bazaar and bridge evenings | Naqsh-e Jahan Square, Si-o-se-pol, Sheikh Lotfollah Mosque | Beryani & gaz | Turquoise-domed Persian poetry
+Marrakech, Morocco | Mar–May, Sep–Nov | Medina and souk wandering | Jemaa el-Fnaa, Bahia Palace, Majorelle Garden | Tagine | Rose-red sensory overload
+Fes, Morocco | Mar–May, Sep–Nov | Guided medina tour | Fes el-Bali, Chouara Tannery, Al-Qarawiyyin | Pastilla | Ancient labyrinthine medina
+Chefchaouen, Morocco | Apr–Jun, Sep–Oct | Blue-streets photo walk | Kasbah Museum, Plaza Uta el-Hammam, Spanish Mosque | Goat cheese & tagine | Blue-washed mountain village
+Essaouira, Morocco | May–Sep | Ramparts and windswept beach | Skala de la Ville, Medina, Port | Grilled fresh fish | Breezy blue-and-white Atlantic port
+Cairo, Egypt | Oct–Apr | Pyramids of Giza visit | Pyramids of Giza, Egyptian Museum, Khan el-Khalili | Koshari | Ancient and chaotic
+Luxor, Egypt | Oct–Apr | Valley of the Kings tour | Karnak Temple, Valley of the Kings, Hatshepsut Temple | Egyptian pigeon & molokhia | Open-air pharaonic museum
+Aswan, Egypt | Oct–Apr | Nile felucca ride | Philae Temple, Abu Simbel, Nubian Village | Nubian dishes | Golden Nile and Nubian colour
+Tunis, Tunisia | Mar–May, Sep–Nov | Medina and Carthage tour | Medina of Tunis, Carthage, Sidi Bou Said | Brik & couscous | Blue-and-white Mediterranean
+Cape Town, South Africa | Nov–Mar | Table Mountain hike | Table Mountain, Cape Point, Bo-Kaap | Braai & bobotie | Dramatic mountains meets ocean
+Stellenbosch, South Africa | Nov–Mar | Wine estate tasting | Delheim, Spier Wine Farm, Stellenbosch Village Museum | Cape Malay curry & biltong | Vineyards under mountains
+Stone Town (Zanzibar), Tanzania | Jun–Oct | Spice tour & sunset dhow | House of Wonders, Forodhani Gardens, Old Fort | Zanzibar pizza & urojo | Carved doors and Swahili spice
+Nairobi, Kenya | Jun–Oct, Jan–Feb | Giraffe Centre and safari | Nairobi National Park, Giraffe Centre, Karen Blixen Museum | Nyama choma | Safari gateway city
+Arusha, Tanzania | Jun–Oct | Serengeti safari launchpad | Arusha National Park, Cultural Heritage Centre, Maasai Market | Ugali & nyama choma | Safari-gate base under Mount Meru
+Victoria Falls, Zimbabwe | Feb–May, Aug–Oct | Falls viewing and Zambezi cruise | Victoria Falls, Devil's Pool, Zambezi River | Sadza & kapenta | Thundering mist and river
+Swakopmund, Namibia | Apr–Oct | Dune adventure sports | Dune 7, Swakopmund Jetty, Walvis Bay Lagoon | Seafood & kudu steak | Desert-meets-Atlantic German colonial
+Kigali, Rwanda | Jun–Sep, Dec–Feb | Gorilla trekking base | Kigali Genocide Memorial, Inema Arts Center, Kimironko Market | Brochettes & isombe | Clean, hilly, hopeful
+Dakar, Senegal | Nov–Mar | Gorée Island & music nights | Gorée Island, African Renaissance Monument, Lac Rose | Thieboudienne | Vibrant, artsy Atlantic
+Accra, Ghana | Nov–Mar | Beach and nightlife | Independence Square, Jamestown, Labadi Beach | Jollof & waakye | Lively West African culture
+Addis Ababa, Ethiopia | Oct–Feb | Coffee ceremony and history | National Museum, Merkato, Mount Entoto | Injera with doro wat | High-altitude, historic, coffee-scented
+Lalibela, Ethiopia | Oct–Mar | Rock church pilgrimage | Church of St George, Bete Medhane Alem, Bete Giyorgis | Injera & shiro | Carved sacred rock
+New York City, USA | Apr–Jun, Sep–Nov | Broadway and walking tours | Central Park, Statue of Liberty, Brooklyn Bridge | Pizza & bagels | Skyline energy
+San Francisco, USA | Sep–Nov | Golden Gate and cable car ride | Golden Gate Bridge, Alcatraz, Painted Ladies | Sourdough & Dungeness crab | Foggy hills and Victorian rows
+Los Angeles, USA | Mar–May, Sep–Nov | Beach and studio tours | Griffith Observatory, Santa Monica Pier, Hollywood Walk of Fame | Tacos | Sunny, sprawling, cinematic
+New Orleans, USA | Feb–May, Oct–Nov | Live jazz and French Quarter | French Quarter, Frenchmen Street, Garden District | Gumbo & beignets | Ornate balconies and jazz
+Chicago, USA | May–Sep | Architecture river cruise | Millennium Park, Art Institute, Chicago Riverwalk | Deep-dish pizza | Bold skyscrapers on a lake
+Seattle, USA | Jun–Sep | Pike Place and ferry trip | Space Needle, Pike Place Market, Chihuly Garden | Salmon & seafood | Misty, coffee-fuelled, evergreen
+Savannah, USA | Mar–May, Oct–Nov | Square-to-square walk | Forsyth Park, Bonaventure Cemetery, River Street | Shrimp & grits | Spanish-moss southern gothic
+Santa Fe, USA | May–Oct | Gallery & adobe-town wandering | Canyon Road, Georgia O'Keeffe Museum, Plaza | Green chile stew | Adobe, turquoise, desert art
+Honolulu, USA | Apr–Jun, Sep–Oct | Surfing and Diamond Head hike | Waikiki Beach, Diamond Head, Pearl Harbor | Poke & shave ice | Tropical island city
+Boston, USA | May–Jun, Sep–Oct | Freedom Trail walk | Freedom Trail, Fenway Park, Harvard Yard | Clam chowder & lobster roll | Colonial brick and academia
+Miami, USA | Dec–Apr | Beach and art deco tour | South Beach, Wynwood Walls, Little Havana | Cuban sandwich | Neon art deco and pastels
+Vancouver, Canada | Jun–Sep | Seawall bike ride | Stanley Park, Granville Island, Capilano Suspension Bridge | Salmon & sushi | Mountains-meet-glass skyline
+Montreal, Canada | Jun–Sep | Festival and food scene | Old Montreal, Mount Royal, Jean-Talon Market | Poutine & bagels | French-flavoured and artsy
+Quebec City, Canada | Jun–Sep, Feb | Old City walk or Winter Carnival | Château Frontenac, Petit-Champlain, Citadelle | Tourtière & maple treats | European walled-city feel
+Banff, Canada | Jun–Sep, Dec–Mar | Lake and mountain hiking | Lake Louise, Moraine Lake, Banff Gondola | Elk burger & bison | Turquoise lakes and peaks
+Toronto, Canada | May–Sep | Neighbourhood food crawl | CN Tower, Kensington Market, Distillery District | Peameal bacon sandwich | Multicultural lakeside city
+Mexico City, Mexico | Mar–May, Oct–Nov | Taco and mezcal tour | Zócalo, Frida Kahlo Museum, Teotihuacan | Tacos al pastor | Colourful, huge, artistic
+Oaxaca, Mexico | Oct–Nov, Feb–Apr | Mezcal tasting and market crawl | Monte Albán, Santo Domingo Church, Hierve el Agua | Mole negro & tlayudas | Vivid colonial and Indigenous heritage
+Guanajuato, Mexico | Oct–Apr | Alley and tunnel wandering | Callejón del Beso, Universidad de Guanajuato, Pípila Monument | Enchiladas mineras | Rainbow-coloured hill town
+Mérida, Mexico | Nov–Mar | Cenote swimming day trip | Plaza Grande, Paseo de Montejo, Chichén Itzá | Cochinita pibil | Colonial yellow-and-white
+San Miguel de Allende, Mexico | Oct–Apr | Cobblestone and rooftop bar wander | Parroquia de San Miguel, El Jardín, Fábrica La Aurora | Chiles en nogada | Pink-stone colonial elegance
+Cartagena, Colombia | Dec–Mar | Walled city stroll & Rosario Islands | Walled City, Castillo San Felipe, Getsemaní | Arepas & ceviche | Colourful Caribbean colonial
+Medellín, Colombia | Dec–Mar, Jul–Aug | Cable-car and comuna tours | Comuna 13, Plaza Botero, Parque Arví | Bandeja paisa | City of eternal spring
+Lima, Peru | Dec–Apr | Ceviche tasting | Miraflores, Huaca Pucllana, Barranco | Ceviche | Cliffside coastal and culinary
+Cusco, Peru | May–Sep | Machu Picchu gateway | Plaza de Armas, Sacsayhuamán, Sacred Valley | Cuy & lomo saltado | Inca stone under Andean skies
+Arequipa, Peru | Apr–Nov | Colca Canyon excursion | Plaza de Armas, Santa Catalina Monastery, Colca Canyon | Rocoto relleno | White volcanic-stone city
+Quito, Ecuador | Jun–Sep | Old Town and equator stop | Basilica del Voto Nacional, Plaza Grande, TelefériQo | Locro de papa | High-altitude colonial
+Buenos Aires, Argentina | Mar–May, Sep–Nov | Tango night | Recoleta Cemetery, La Boca, Plaza de Mayo | Asado & empanadas | Parisian elegance with Latin passion
+Mendoza, Argentina | Mar–May, Sep–Nov | Malbec vineyard biking | Maipú vineyards, Aconcagua viewpoint, Plaza Independencia | Asado with Malbec | Sun-drenched Andean wine country
+Bariloche, Argentina | Dec–Feb, Jul–Aug | Lake and ski adventures | Cerro Campanario, Circuito Chico, Cerro Catedral | Chocolate & Patagonian lamb | Swiss-style lakeside Patagonia
+Santiago, Chile | Sep–Nov, Mar–May | Wine valley day trip | Cerro San Cristóbal, Plaza de Armas, Barrio Lastarria | Pastel de choclo | Andes-framed metropolis
+Valparaíso, Chile | Nov–Mar | Funicular and street-art walk | Cerro Alegre, La Sebastiana, Paseo Atlas | Seafood stew | Graffiti-covered hillside port
+Rio de Janeiro, Brazil | Dec–Mar | Beach, Sugarloaf & samba | Christ the Redeemer, Sugarloaf Mountain, Copacabana | Feijoada | Beaches under granite peaks
+Salvador, Brazil | Dec–Mar | Afro-Brazilian culture & Pelourinho walk | Pelourinho, Elevador Lacerda, Igreja de São Francisco | Moqueca & acarajé | Colourful Afro-Brazilian colonial
+São Paulo, Brazil | Mar–May, Sep–Nov | Food and art immersion | Avenida Paulista, Ibirapuera Park, Municipal Market | Mortadella sandwich & pastel | Gritty, sprawling, cultural
+Montevideo, Uruguay | Nov–Mar | Rambla sunset stroll | Rambla, Ciudad Vieja, Mercado del Puerto | Chivito & asado | Relaxed retro-coastal
+Havana, Cuba | Nov–Apr | Vintage car ride & salsa night | Old Havana, Malecón, Plaza de la Revolución | Ropa vieja & mojito | Faded pastel time capsule
+San Juan, Puerto Rico | Dec–Apr | Fort exploration & beach time | Castillo San Felipe del Morro, Old San Juan, La Perla | Mofongo | Cobblestone and candy-coloured
+Antigua Guatemala, Guatemala | Nov–Apr | Volcano hike | Santa Catalina Arch, Pacaya Volcano, Convento de Santo Domingo | Pepián & Guatemalan coffee | Ruined colonial between volcanoes
+Panama City, Panama | Dec–Apr | Canal visit & Casco Viejo walk | Panama Canal, Casco Viejo, Biomuseo | Sancocho & ceviche | Skyscrapers beside colonial lanes
+Sydney, Australia | Sep–Nov, Mar–May | Harbour ferry and coastal walk | Sydney Opera House, Harbour Bridge, Bondi Beach | Meat pie & seafood | Sparkling harbour city
+Melbourne, Australia | Mar–May, Oct–Nov | Laneway café and street-art crawl | Federation Square, Hosier Lane, Queen Victoria Market | Brunch & flat whites | Artsy laneway culture
+Hobart, Australia | Dec–Mar | Art museum & market visit | MONA, Salamanca Market, Mount Wellington | Fresh oysters & Tasmanian whisky | Wild-edged and creative
+Cairns, Australia | Jun–Oct | Great Barrier Reef dive | Great Barrier Reef, Daintree Rainforest, Kuranda | Barramundi | Tropical reef gateway
+Perth, Australia | Sep–Nov, Mar–May | Beach and Rottnest Island trip | Kings Park, Cottesloe Beach, Rottnest Island | Seafood & Margaret River wine | Sunny, isolated, laid-back
+Adelaide, Australia | Mar–May, Sep–Nov | Wine region day trip | Barossa Valley, Adelaide Central Market, Glenelg Beach | Pie floater & local Shiraz | Relaxed festival city
+Auckland, New Zealand | Dec–Mar | Island ferry hop | Sky Tower, Waiheke Island, Auckland Domain | Fish and chips & hāngi | City of sails and volcanoes
+Queenstown, New Zealand | Dec–Feb, Jun–Aug | Bungee, skiing, and lake cruises | Skyline Gondola, Lake Wakatipu, Milford Sound day trip | Fergburger | Adrenaline in Alpine scenery
+Wellington, New Zealand | Dec–Mar | Café-hopping & Te Papa | Te Papa Museum, Cable Car, Zealandia | Flat white & craft beer | Windy, creative, compact
+Rotorua, New Zealand | Dec–Mar | Māori cultural experience & geothermal walks | Te Puia, Redwoods Treewalk, Hell's Gate | Hāngi | Steaming geothermal and Māori heritage
+Papeete, French Polynesia | May–Oct | Island-hopping base & lagoon snorkelling | Marché de Papeete, Fautaua Valley, Moorea day trip | Poisson cru | Polynesian-French tropical`;
+
+const countryInfo = {};
+"France:4:FR,Italy:3:IT,Spain:3:ES,Portugal:2:PT,Netherlands:4:NL,Belgium:3:BE,Germany:3:DE,Austria:3:AT,Czechia:2:CZ,Hungary:2:HU,Poland:2:PL,Denmark:4:DK,Sweden:4:SE,Norway:5:NO,Finland:4:FI,Iceland:5:IS,Estonia:2:EE,Latvia:2:LV,Lithuania:2:LT,UK:4:GB,Ireland:4:IE,Greece:3:GR,Croatia:3:HR,Slovenia:3:SI,Montenegro:2:ME,Bosnia & Herzegovina:1:BA,Serbia:1:RS,Romania:1:RO,Bulgaria:1:BG,Switzerland:5:CH,Malta:3:MT,Georgia:1:GE,Armenia:1:AM,Azerbaijan:2:AZ,Japan:4:JP,South Korea:3:KR,China:2:CN,Taiwan:3:TW,Thailand:2:TH,Laos:1:LA,Vietnam:1:VN,Cambodia:1:KH,Singapore:4:SG,Malaysia:2:MY,Indonesia:2:ID,Philippines:2:PH,Nepal:1:NP,Sri Lanka:2:LK,India:1:IN,Bhutan:3:BT,Uzbekistan:1:UZ,Kazakhstan:2:KZ,Mongolia:2:MN,Hong Kong:4:HK,Maldives:5:MV,Türkiye:2:TR,UAE:4:AE,Oman:3:OM,Qatar:4:QA,Jordan:2:JO,Israel/Palestine:4:IL,Israel:4:IL,Lebanon:2:LB,Iran:2:IR,Morocco:2:MA,Egypt:1:EG,Tunisia:2:TN,South Africa:2:ZA,Tanzania:3:TZ,Kenya:3:KE,Zimbabwe:3:ZW,Namibia:3:NA,Rwanda:3:RW,Senegal:2:SN,Ghana:2:GH,Ethiopia:2:ET,USA:4:US,Canada:4:CA,Mexico:2:MX,Colombia:2:CO,Peru:2:PE,Ecuador:2:EC,Argentina:2:AR,Chile:3:CL,Brazil:2:BR,Uruguay:3:UY,Cuba:2:CU,Puerto Rico:3:PR,Guatemala:2:GT,Panama:3:PA,Australia:4:AU,New Zealand:4:NZ,French Polynesia:5:PF".split(",").forEach(item => {
+const parts = item.split(":");
+countryInfo[parts[0]] = [Number(parts[1]), parts[2]];
+});
+const cruiseCities = new Set("Barcelona,Valencia,Lisbon,Amsterdam,Copenhagen,Stockholm,Oslo,Bergen,Helsinki,Tallinn,Riga,Gdańsk,Hamburg,Reykjavik,Dubrovnik,Split,Kotor,Venice,Naples,Palermo,Athens,Thessaloniki,Istanbul,Dubai,Abu Dhabi,Muscat,Doha,Singapore,Hong Kong,Macau,Shanghai,Tokyo,Osaka,Busan,Sydney,Melbourne,Perth,Auckland,Cairns,Hobart,Papeete,Honolulu,San Juan,Havana,Cartagena,Rio de Janeiro,Valparaíso,Salvador,Montevideo,Cape Town,Miami,Vancouver,Seattle,Boston,New Orleans,San Francisco,Nice,Valletta,Malé,Colombo,Galle,Kochi,Mumbai,Panaji,Stone Town,Tel Aviv,Beirut,Nagasaki,Hiroshima".split(","));
+const islandCities = new Set("Malé,Papeete,Honolulu,San Juan,Valletta,Stone Town".split(","));
+const places = cityData.split("\n").map(line => {
+const [fullName, bestTime, experience, sights, food, vibe] = line.split(" | ");
+const comma = fullName.lastIndexOf(", ");
+const city = comma < 0 ? fullName : fullName.slice(0, comma);
+const country = comma < 0 ? fullName : fullName.slice(comma + 2);
+const name = city.replace(/ \(.*\)/, "");
+const [cost, iso] = countryInfo[country] || [3, ""];
+const hue = [...name].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) % 360, 7);
+let flags = "";
+if (cruiseCities.has(name)) flags += "c";
+if (islandCities.has(name)) flags += "n";
+return {
+name: name,
+full: fullName,
+country: country,
+emoji: iso ? String.fromCodePoint(...[...iso].map(ch => 127397 + ch.charCodeAt(0))) : "📍",
+vibe: vibe,
+experience: experience,
+bestTime: bestTime,
+sights: sights.split(", "),
+food: food,
+cost: cost,
+flags: flags,
+stay: (cost + 2) + "–" + (cost + 4) + " days",
+colors: [`hsl(${hue},55%,30%)`, `hsl(${(hue + 50) % 360},75%,62%)`]
+};
+});
+
+//   photos  
+
+const photoCache = {};
+let shownPlace = null;
+let packagePlace = 0;
+function loadPhoto(place, callback) {
+if (photoCache[place.name] !== undefined) {
+if (photoCache[place.name]) callback(photoCache[place.name]);
+return;
+}
+photoCache[place.name] = null;
+const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=3" +
+"&gsrsearch=" + encodeURIComponent(place.name + " " + place.country) +
+"&prop=pageimages&piprop=thumbnail&pithumbsize=700";
+fetch(url)
+.then(response => response.json())
+.then(data => {
+const pages = Object.values((data.query || {}).pages || {}).filter(page => page.thumbnail);
+pages.sort((a, b) => a.index - b.index);
+if (pages.length) {
+photoCache[place.name] = pages[0].thumbnail.source;
+callback(pages[0].thumbnail.source);
+}
+})
+.catch(() => {});
+}
+
+//   building the globe  
+const SPHERE_RADIUS = 270;
+const letters = [];
+let fontSize = 26;
+let letterWidth = 15.6;
+let nextWordId = 0;
+function addLetter(char, longitude, latitude, wordId, placeIndex) {
+const cosLat = Math.cos(latitude);
+const sinLat = Math.sin(latitude);
+const cosLon = Math.cos(longitude);
+const sinLon = Math.sin(longitude);
+letters.push({
+char: char,
+wordId: wordId,
+place: placeIndex,
+pos: [cosLat * sinLon, sinLat, cosLat * cosLon],
+east: [cosLon, 0, -sinLon],
+up: [-sinLat * sinLon, cosLat, -sinLat * cosLon],
+screenX: 0,
+screenY: 0,
+depth: -1
+});
+}
+function packRows(scale) {
+const width = 15.6 * scale;
+const height = 28.6 * scale;
+const angle = height / SPHERE_RADIUS;
+const rowCount = Math.floor(2.65 / angle) + 1;
+const rows = [];
+for (let i = 0; i < rowCount; i++) {
+const lat = (i - (rowCount - 1) / 2) * angle;
+const capacity = Math.floor(2 * Math.PI * SPHERE_RADIUS * Math.cos(lat) / width);
+rows.push({ lat: lat, capacity: capacity, used: 0, words: [] });
+}
+const longestFirst = places.map((p, i) => i).sort((a, b) => places[b].name.length - places[a].name.length);
+for (const i of longestFirst) {
+const need = places[i].name.length + 1;
+let best = null;
+for (const row of rows) {
+const free = row.capacity - row.used;
+if (free >= need && (!best || free > best.capacity - best.used)) best = row;
+}
+if (!best) return null;
+best.used += need;
+best.words.push(i);
+}
+return { rows: rows, width: width, scale: scale };
+}
+let packed = null;
+for (let s = 1.3; s >= 0.4 && !packed; s -= 0.02) {
+packed = packRows(s);
+}
+fontSize = 26 * packed.scale;
+letterWidth = packed.width;
+packed.rows.forEach(row => {
+if (row.words.length === 0) return;
+row.words.sort(() => Math.random() - 0.5);
+const step = letterWidth / (SPHERE_RADIUS * Math.cos(row.lat));
+const gap = (2 * Math.PI - (row.used - row.words.length) * step) / row.words.length;
+let lon = Math.random() * 6.28;
+row.words.forEach(i => {
+const id = nextWordId++;
+for (const ch of places[i].name) {
+if (ch !== " ") addLetter(ch, lon, row.lat, id, i);
+lon += step;
+}
+lon += gap;
+});
+});
+addLetter("*", 0, Math.PI / 2, -1, -1);
+addLetter("*", 0, -Math.PI / 2, -1, -1);
+
+//   drawing the globe  
+const canvas = $("cv");
+const ctx = canvas.getContext("2d");
+const stage = $("stage");
+
+const LETTER_COLOR = "#bcd9ee";
+const sprites = {};
+let dpr = 1;
+let size = 600;
+let pxScale = 1;
+let tilt = -18;
+let spin = 0;
+let spinSpeed = 14;
+let paused = false;
+let dragStart = null;
+let hovered = -1;
+let lastTime = 0;
+let zoom = 1;
+let zoomTarget = 1;
+let flyTarget = null;
+function resizeCanvas() {
+dpr = Math.min(2, window.devicePixelRatio || 1);
+size = stage.clientWidth;
+canvas.width = canvas.height = Math.round(size * dpr);
+pxScale = size * 0.42 / SPHERE_RADIUS;
+for (const key in sprites) delete sprites[key];
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+function getSprite(char, highlighted) {
+const key = highlighted ? char + "!" : char;
+if (sprites[key]) return sprites[key];
+const fontPx = fontSize * 2 * dpr;
+const sprite = document.createElement("canvas");
+sprite.width = sprite.height = Math.ceil(fontPx * 1.6);
+const g = sprite.getContext("2d");
+g.font = `700 ${fontPx}px "Courier New", Courier, monospace`;
+g.textAlign = "center";
+g.textBaseline = "middle";
+g.fillStyle = highlighted ? "#ffffff" : LETTER_COLOR;
+if (highlighted) {
+g.shadowColor = "#7fd0ff";
+g.shadowBlur = fontPx * 0.35;
+}
+g.fillText(char, sprite.width / 2, sprite.height / 2);
+sprites[key] = sprite;
+return sprite;
+}
+function draw(time) {
+const dt = Math.min(0.05, (time - lastTime) / 1000 || 0);
+lastTime = time;
+if (flyTarget) {
+const diff = ((flyTarget.spin - spin + 540) % 360) - 180;
+const ease = Math.min(1, dt * 5);
+spin += diff * ease;
+tilt += (flyTarget.tilt - tilt) * ease;
+if (Math.abs(diff) < 0.3 && Math.abs(flyTarget.tilt - tilt) < 0.3) flyTarget = null;
+}
+if (!paused && !dragStart) spin += spinSpeed * dt;
+const a = spin * Math.PI / 180;
+const b = tilt * Math.PI / 180;
+const cosA = Math.cos(a);
+const sinA = Math.sin(a);
+const cosB = Math.cos(b);
+const sinB = Math.sin(b);
+zoom += (zoomTarget - zoom) * Math.min(1, dt * 6);
+const radius = size * 0.42 * zoom;
+const center = size / 2;
+const k = pxScale * zoom;
+
+ctx.setTransform(1, 0, 0, 1, 0, 0);
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+for (let pass = 0; pass < 2; pass++) {
+for (const l of letters) {
+const p = l.pos;
+const x1 = p[0] * cosA + p[2] * sinA;
+const z1 = -p[0] * sinA + p[2] * cosA;
+const y1 = p[1] * cosB - z1 * sinB;
+const z = p[1] * sinB + z1 * cosB;
+if ((z < 0) !== (pass === 0)) continue;
+l.depth = z;
+const persp = 4 / (4 - z);
+const e = l.east;
+const u = l.up;
+const ex = e[0] * cosA + e[2] * sinA;
+const ey = e[1] * cosB - (-e[0] * sinA + e[2] * cosA) * sinB;
+const ux = u[0] * cosA + u[2] * sinA;
+const uy = u[1] * cosB - (-u[0] * sinA + u[2] * cosA) * sinB;
+l.screenX = center + x1 * radius * persp;
+l.screenY = center - y1 * radius * persp;
+const m = k * persp / 2;
+ctx.setTransform(ex * m, -ey * m, -ux * m, uy * m, l.screenX * dpr, l.screenY * dpr);
+ctx.globalAlpha = 0.15 + 0.85 * (z + 1) / 2;
+const sprite = getSprite(l.char, hovered >= 0 && l.wordId === hovered && z > 0);
+ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+}
+}
+requestAnimationFrame(draw);
+}
+
+//   mouse and touch 
+function findLetter(event) {
+const rect = canvas.getBoundingClientRect();
+const x = event.clientX - rect.left;
+const y = event.clientY - rect.top;
+let best = null;
+let bestDist = (letterWidth * 0.75 * pxScale * zoom) ** 2;
+for (const l of letters) {
+if (l.wordId < 0 || l.depth < 0.15) continue;
+const d = (l.screenX - x) ** 2 + (l.screenY - y) ** 2;
+if (d < bestDist) {
+bestDist = d;
+best = l;
+}
+}
+return best;
+}
+canvas.addEventListener("pointerdown", e => {
+dragStart = { x: e.clientX, y: e.clientY };
+canvas.setPointerCapture(e.pointerId);
+flyTarget = null;
+const l = findLetter(e);
+if (l) {
+showPlace(l.wordId, l.place);
+selectPlace(l.place, false);
+} else if (e.pointerType !== "mouse") {
+closeCards();
+}
+});
+
+canvas.addEventListener("pointermove", e => {
+if (dragStart) {
+spin -= (e.clientX - dragStart.x) * 0.4;
+tilt = Math.max(-60, Math.min(60, tilt - (e.clientY - dragStart.y) * 0.3));
+dragStart = { x: e.clientX, y: e.clientY };
+return;
+}
+if (e.pointerType !== "mouse") return;
+const l = findLetter(e);
+if (l) {
+if (l.wordId !== hovered) showPlace(l.wordId, l.place);
+canvas.style.cursor = "pointer";
+} else {
+paused = false;
+hovered = -1;
+canvas.style.cursor = "grab";
+closeCards();
+}
+});
+
+canvas.addEventListener("pointerup", () => {
+dragStart = null;
+});
+
+canvas.addEventListener("pointerleave", e => {
+if (e.pointerType === "mouse") {
+paused = false;
+hovered = -1;
+closeCards();
+}
+});
+if (matchMedia("(prefers-reduced-motion: reduce)").matches) spinSpeed = 0;
+
+//   the four info cards  
+
+const wrap = $("wrap");
+let closeTimer = 0;
+function openCards() {
+clearTimeout(closeTimer);
+const cx = stage.offsetLeft + stage.offsetWidth / 2;
+const cy = stage.offsetTop + stage.offsetHeight / 2;
+document.querySelectorAll(".card").forEach(card => {
+card.style.setProperty("--dx", (cx - (card.offsetLeft + card.offsetWidth / 2)) + "px");
+card.style.setProperty("--dy", (cy - (card.offsetTop + card.offsetHeight / 2)) + "px");
+});
+wrap.classList.add("open");
+zoomTarget = 0.84;
+}
+function closeCards() {
+clearTimeout(closeTimer);
+closeTimer = setTimeout(() => {
+wrap.classList.remove("open");
+zoomTarget = 1;
+}, 450);
+}
+function showPlace(wordId, index) {
+const p = places[index];
+hovered = wordId;
+paused = true;
+const pic = $("pic");
+const gradient = `linear-gradient(135deg, ${p.colors[0]}, ${p.colors[1]})`;
+pic.style.backgroundImage = gradient;
+pic.firstElementChild.textContent = p.emoji;
+pic.lastElementChild.textContent = p.name;
+const small = document.createElement("small");
+small.textContent = p.country;
+pic.lastElementChild.append(small);
+shownPlace = p;
+loadPhoto(p, url => {
+if (shownPlace === p) {
+pic.style.backgroundImage = `url(${url}), ${gradient}`;
+pic.firstElementChild.textContent = "";
+}
+});
+$("c2").innerHTML = '<h3>About</h3><p class="big"></p><p class="dim"></p>';
+$("c2").children[1].textContent = p.vibe;
+$("c2").children[2].textContent = p.experience + " · " + p.country;
+const base = 15000 + p.cost * 14000;
+$("c3").innerHTML = '<h3>When to go</h3><p class="big"></p><p class="dim"></p>';
+$("c3").children[1].textContent = p.bestTime;
+$("c3").children[2].textContent = "Stay " + p.stay + " · packages from " +
+rupees(makeDeal(base, p.name + "Explorer").app) + " in-app (" + rupees(base) + " outside)";
+$("c4").innerHTML = '<h3>Don’t miss</h3><ul></ul><p class="dim"></p>';
+p.sights.forEach(sight => {
+const li = document.createElement("li");
+li.textContent = sight;
+$("c4").querySelector("ul").append(li);
+});
+$("c4").lastElementChild.textContent = "Try: " + p.food;
+
+openCards();
+}
+
+//   prices and booking data  
+
+
+function rupees(n) {
+return "₹" + n.toLocaleString("en-IN");
+}
+function hashText(text) {
+return [...text].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) >>> 0, 7);
+}
+function makeDeal(outside, seed) {
+const discount = 8 + hashText(seed) % 10;
+return {
+out: outside,
+app: Math.round(outside * (1 - discount / 100) / 10) * 10,
+d: discount
+};
+}
+const travelModes = {
+Flights: {
+icon: "✈️",
+field: ["From", "Pune"],
+numberField: ["Travellers", 1],
+unit: "person",
+basePrice: p => 4000 + p.cost * 4500,
+options: [
+["Budget Wings", "2 stops · 05:40 → 22:15", 0.55],
+["SkyLite", "1 stop · 11:15 → 03:05", 0.68],
+["Aero Connect", "1 stop · 13:20 → 21:15", 0.82],
+["Skyline Air", "Direct · 08:05 → 11:40", 1],
+["BlueJet", "Direct · 22:10 → 02:00", 1.25],
+["Premier Air", "Direct · business class", 2.3],
+["Royal First", "Direct · first class", 3.6]
+]
+},
+Trains: {
+icon: "🚆",
+field: ["From", "Pune"],
+numberField: ["Travellers", 1],
+unit: "person",
+basePrice: p => 700 + p.cost * 500,
+options: [
+["Coastal Express", "Sleeper · 14h", 1],
+["Royal Rail", "3AC · 12h", 1.8],
+["Rapid Link", "2AC · 11h", 2.6]
+]
+},
+Buses: {
+icon: "🚌",
+field: ["From", "Pune"],
+numberField: ["Travellers", 1],
+unit: "person",
+basePrice: p => 500 + p.cost * 400,
+options: [
+["Night Rider", "Sleeper · 15h", 1],
+["CityLink", "Seater AC · 14h", 0.85],
+["Comfort Coach", "Volvo AC · 13h", 1.4]
+]
+},
+Cruises: {
+icon: "🚢",
+field: ["Embark port", "Nearest port"],
+numberField: ["Travellers", 2],
+unit: "person",
+basePrice: p => 15000 + p.cost * 9000,
+options: [
+["Azure Voyager", "3 nights · cabin", 1],
+["Ocean Pearl", "5 nights · balcony", 1.7],
+["Royal Horizon", "7 nights · suite", 2.6]
+]
+},
+Cabs: {
+icon: "🚕",
+field: ["Pickup", "Airport"],
+dateLabel: "Pickup date",
+numberField: ["Days", 1],
+unit: "day",
+basePrice: p => 1200 + p.cost * 600,
+options: [
+["Hatchback", "4 seats", 1],
+["Sedan", "4 seats + luggage", 1.3],
+["SUV", "6 seats", 1.8]
+]
+},
+Hotels: {
+icon: "🏨",
+field: ["Area", "City centre"],
+dateLabel: "Check-in",
+numberField: ["Nights", 3],
+unit: "night",
+basePrice: p => 2500 + p.cost * 2500,
+options: [
+["Budget Stay", "2★ · breakfast", 1],
+["Grand City Hotel", "4★ · pool", 1.9],
+["Luxe Resort", "5★ · spa", 3.2]
+]
+}
+};
+const packageTypes = [
+["Explorer", "3N/4D", 1, "Hotel · airport cab · city tour"],
+["Comfort", "5N/6D", 1.6, "Flights · 4★ hotel · cabs · guided sightseeing"],
+["Luxe", "7N/8D", 2.5, "Flights · 5★ stay · private cab · experiences"]
+];
+function priceHtml(deal, unitText) {
+return '<div class="pr"><span class="was">' + rupees(deal.out) + '</span><b>' + rupees(deal.app) +
+'</b><em>−' + deal.d + '% in-app</em><small class="dim">' + unitText + '</small></div>';
+}
+
+
+
+//   choosing a city and booking 
+
+ 
+let selected = null;
+let currentMode = "Flights";
+function selectPlace(index, fly) {
+selected = index;
+const p = places[index];
+const letter = letters.find(l => l.place === index && l.wordId >= 0);
+if (fly && letter) {
+const pos = letter.pos;
+const a = Math.atan2(-pos[0], pos[2]);
+const z1 = -pos[0] * Math.sin(a) + pos[2] * Math.cos(a);
+flyTarget = {
+spin: a * 180 / Math.PI,
+tilt: Math.max(-60, Math.min(60, Math.atan2(pos[1], z1) * 180 / Math.PI))
+};
+showPlace(letter.wordId, index);
+}
+$("selbar").hidden = false;
+$("seltxt").textContent = "📍 " + p.name + ", " + p.country;
+showBooking();
+showPackages(index);
+}
+function showBooking() {
+const box = $("bookbox");
+if (selected === null) {
+box.innerHTML = '<h3>Book your trip</h3><p class="dim">Pick a destination on the globe or use the search bar to start booking.</p>';
+return;
+}
+const p = places[selected];
+const tabs = Object.keys(travelModes).filter(name => {
+if (p.flags.includes("n") && (name === "Trains" || name === "Buses")) return false;
+if (name === "Cruises" && !p.flags.includes("c")) return false;
+return true;
+});
+if (!tabs.includes(currentMode)) currentMode = tabs[0];
+const mode = travelModes[currentMode];
+const defaultDate = new Date(Date.now() + 1209600000).toISOString().slice(0, 10);
+
+let html = '<h3>Plan your trip to <span>' + p.name + '</span></h3><div class="tabs">';
+tabs.forEach(name => {
+html += '<button data-m="' + name + '" class="' + (name === currentMode ? "on" : "") + '">' + travelModes[name].icon + " " + name + "</button>";
+});
+html += "</div>";
+if (!p.flags.includes("c")) html += '<p class="dim small">Cruises aren’t available for this destination.</p>';
+if (p.flags.includes("n")) html += '<p class="dim small">Reached by air or sea only, so no trains or buses.</p>';
+html += '<div class="form">' +
+'<label>' + mode.field[0] + '<input id="f1" value="' + mode.field[1] + '"></label>' +
+'<label>' + (mode.dateLabel || "Travel date") + '<input id="f2" type="date" value="' + defaultDate + '"></label>' +
+'<label>' + mode.numberField[0] + '<input id="f3" type="number" min="1" value="' + mode.numberField[1] + '"></label>' +
+'<button class="cta" id="go">Search</button></div><div id="res"></div>';
+box.innerHTML = html;
+showResults();
+}
+function showResults() {
+const p = places[selected];
+const mode = travelModes[currentMode];
+const qty = Math.max(1, Number($("f3").value) || 1);
+const rows = mode.options.map((option, i) => ({
+option: option,
+deal: makeDeal(Math.round(mode.basePrice(p) * option[2] * qty / 10) * 10, p.name + currentMode + i)
+}));
+rows.sort((a, b) => a.deal.app - b.deal.app);
+$("res").innerHTML = rows.map((row, n) =>
+'<div class="opt"><div><b>' + row.option[0] + '</b><div class="dim small">' + row.option[1] + '</div></div>' +
+priceHtml(row.deal, "per " + mode.unit + " × " + qty) +
+(n === 0 ? '<em class="best">Cheapest</em>' : "") +
+'<button class="cta sm" data-b="' + row.option[0] + '">Book</button></div>'
+).join("");
+}
+function showPackages(index) {
+const p = places[index];
+packagePlace = index;
+$("pktitle").textContent = "Tour packages · " + p.name;
+const gradient = `linear-gradient(135deg, ${p.colors[0]}, ${p.colors[1]})`;
+$("pk").innerHTML = packageTypes.map(type => {
+const price = makeDeal(Math.round((15000 + p.cost * 14000) * type[2] / 100) * 100, p.name + type[0]);
+return '<article class="pkg"><div class="pimg" style="background:' + gradient + '">' + p.emoji + '</div>' +
+'<div class="pb"><h4>' + type[0] + " · " + type[1] + '</h4><p class="dim small">' + type[3] + '</p>' +
+priceHtml(price, "per person") +
+'<button class="cta sm" data-b="' + p.name + " " + type[0] + ' package">Book package</button></div></article>';
+}).join("");
+loadPhoto(p, url => {
+if (packagePlace === index) {
+document.querySelectorAll(".pimg").forEach(box => {
+box.style.backgroundImage = `url(${url}), ${gradient}`;
+box.textContent = "";
+});
+}
+});
+}
+function bookItem(name) {
+if (!user) {
+openModal("Log in to book: " + name);
+return;
+}
+showToast("✅ " + name + " booked (demo). In-app price applied.");
+}
+document.addEventListener("click", e => {
+const button = e.target.closest("button");
+if (!button) return;
+if (button.dataset.m) {
+currentMode = button.dataset.m;
+showBooking();
+} else if (button.id === "go") {
+showResults();
+} else if (button.dataset.b) {
+bookItem(button.dataset.b);
+}
+});
+$("travel").onclick = () => $("book").scrollIntoView({ behavior: "smooth" });
+
+//   search  
+
+
+
+const searchBox = $("q");
+const suggestions = $("sg");
+searchBox.addEventListener("input", () => {
+const text = searchBox.value.trim().toLowerCase();
+suggestions.innerHTML = "";
+if (!text) {
+suggestions.hidden = true;
+return;
+}
+const matches = places.map((p, i) => [p, i]).filter(pair => pair[0].full.toLowerCase().includes(text)).slice(0, 12);
+suggestions.hidden = matches.length === 0;
+matches.forEach(pair => {
+const button = document.createElement("button");
+button.type = "button";
+button.textContent = pair[0].emoji + " " + pair[0].name + " · " + pair[0].country;
+button.onclick = () => {
+searchBox.value = pair[0].name + ", " + pair[0].country;
+suggestions.hidden = true;
+selectPlace(pair[1], true);
+};
+suggestions.append(button);
+});
+});
+searchBox.addEventListener("keydown", e => {
+if (e.key === "Enter" && suggestions.firstChild) suggestions.firstChild.click();
+});
+
+//   log in and sign up 
+
+ 
+
+let user = null;
+let isSignup = false;
+let toastTimer = 0;
+
+function openModal(message) {
+$("mmsg").textContent = message || "";
+$("modal").hidden = false;
+}
+function setTab(signup) {
+isSignup = signup;
+$("nameF").hidden = !signup;
+$("mt1").classList.toggle("on", !signup);
+$("mt2").classList.toggle("on", signup);
+$("msub").textContent = signup ? "Create account" : "Log in";
+}
+
+$("login").onclick = () => { setTab(false); openModal(); };
+$("signup").onclick = () => { setTab(true); openModal(); };
+$("mt1").onclick = () => setTab(false);
+$("mt2").onclick = () => setTab(true);
+$("mx").onclick = () => { $("modal").hidden = true; };
+$("mform").onsubmit = e => {
+e.preventDefault();
+user = (isSignup && $("nm").value.trim()) || $("em").value.split("@")[0];
+$("modal").hidden = true;
+$("guest").hidden = true;
+$("member").hidden = false;
+$("uname").textContent = "Hi, " + user;
+showToast("Welcome, " + user + "!");
+};
+
+$("logout").onclick = () => {
+user = null;
+$("guest").hidden = false;
+$("member").hidden = true;
+};
+function showToast(text) {
+const toast = $("toast");
+toast.textContent = text;
+toast.classList.add("show");
+clearTimeout(toastTimer);
+toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+//   background colour that follows the clock
+
+  
+const skyColors = [
+[0, "#040a1c", "#0b1d44"],
+[5, "#0b1d44", "#3b3a73"],
+[6.5, "#2b4f8c", "#f08a5d"],
+[9, "#1f5fa8", "#5fb0e6"],
+[12, "#1558a8", "#2f8fd8"],
+[16, "#1b5aa6", "#3a9be0"],
+[18, "#2a3f86", "#e0734f"],
+[19.5, "#1c2a66", "#6b3a7a"],
+[21, "#0a1538", "#1b2d63"],
+[24, "#040a1c", "#0b1d44"]
+];
+function hexToRgb(hex) {
+return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+}
+function blend(c1, c2, amount) {
+const a = hexToRgb(c1);
+const b = hexToRgb(c2);
+return "rgb(" + a.map((v, i) => Math.round(v + (b[i] - v) * amount)).join(",") + ")";
+}
+function updateSky() {
+const now = new Date();
+const hour = now.getHours() + now.getMinutes() / 60;
+let j = 0;
+while (skyColors[j + 1][0] <= hour) j++;
+const from = skyColors[j];
+const to = skyColors[j + 1];
+const amount = (hour - from[0]) / (to[0] - from[0]);
+const rootStyle = document.documentElement.style;
+rootStyle.setProperty("--sky1", blend(from[1], to[1], amount));
+rootStyle.setProperty("--sky2", blend(from[2], to[2], amount));
+let icon = "🌙";
+let greeting = "Good night";
+if (hour >= 5 && hour < 8) { icon = "🌅"; greeting = "Good morning"; }
+else if (hour >= 8 && hour < 12) { icon = "☀️"; greeting = "Good morning"; }
+else if (hour >= 12 && hour < 17) { icon = "🌤️"; greeting = "Good afternoon"; }
+else if (hour >= 17 && hour < 19.5) { icon = "🌇"; greeting = "Good evening"; }
+else if (hour >= 19.5 && hour < 21) { icon = "🌆"; greeting = "Good evening"; }
+$("clock").textContent = icon + " " + greeting + " · " +
+now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " on your device";
+}
+
+//   start  
+
+showBooking();
+showPackages(0);
+updateSky();
+setInterval(updateSky, 30000);
+requestAnimationFrame(draw);
+
+</script>
+</body>
+</html>
